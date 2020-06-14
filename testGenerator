@@ -1,0 +1,9 @@
+def testGenerator(test_path,target_size=(512,512),flag_multi_class=True,as_gray=False):
+    filenames = os.listdir(test_path)
+    for filename in filenames:
+        img = io.imread(os.path.join(test_path,filename),as_gray=as_gray)
+        # img = img/255.
+        img = trans.resize(img,target_size,mode = 'constant')
+        img = np.reshape(img,img.shape+(1,)) if (not flag_multi_class) else img
+        img = np.reshape(img,(1,)+img.shape)
+        yield img
