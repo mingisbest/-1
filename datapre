@@ -1,0 +1,32 @@
+def trainGenerator(batch_size,aug_dict,train_path,image_folder,label_folder,image_color_mode='rgb',
+                   label_color_mode='rgb',image_save_prefix='image',label_save_prefix='label',
+                   flag_multi_class=True,num_class=13,save_to_dir=None,target_size=(512,512),seed=1):
+    image_datagen = ImageDataGenerator(**aug_dict)
+    label_datagen = ImageDataGenerator(**aug_dict)
+    image_generator = image_datagen.flow_from_directory(
+        train_path,
+        classes=[image_folder],
+        class_mode=None,
+        color_mode=image_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix = image_save_prefix,
+        seed = seed
+    )
+    label_generator = label_datagen.flow_from_directory(
+        train_path,
+        classes = [label_folder],
+        class_mode = None,
+        color_mode = label_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix = label_save_prefix,
+        seed = seed
+    )
+    train_generator = zip(image_generator,label_generator)
+    for img,label in train_generator:
+        img,label = adjustData(img,label,flag_multi_class,num_class)
+        # print('------2-------',img.shape,label.shape)#(2, 512, 512, 3) (2, 512, 0, 3, 13)
+        yield img,label
