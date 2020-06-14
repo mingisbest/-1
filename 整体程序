@@ -180,7 +180,7 @@ print(12)
 
 IMAGE_SIZE = 128
 print(14)
-def unet(pretrained_weights = None, input_size = (IMAGE_SIZE,IMAGE_SIZE,3),num_class=13):
+def unet(pretrained_weights = None, input_size = (IMAGE_SIZE,IMAGE_SIZE,3),num_class=13):         #源程序中是 num_class=2
     inputs = Input(input_size)
     conv1 = Conv2D(64,3,activation=None,padding='same',kernel_initializer='he_normal')(inputs)
     conv1 = LeakyReLU(alpha=0.3)(conv1)
