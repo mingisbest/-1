@@ -1,0 +1,432 @@
+from __future__ import print_function
+from keras.preprocessing.image import ImageDataGenerator
+import numpy as np 
+import os
+import glob
+import skimage.io as io
+import skimage.transform as trans
+import sys
+from mode.config import *
+np.set_printoptions(threshold=sys.maxsize, precision=5, suppress=True)
+
+arg = command_arguments()
+#########################configuration########################
+cat = [120,0,0]
+dog = [0,255,0]
+Unlabelled = [0,0,0]
+
+COLOR_DICT = np.array([ cat, dog, Unlabelled])
+class_name = [ 'cat', 'dog', 'None']  # You must define by yourself
+
+color = 'grayscale'
+
+num_classes = 3 # include cat, dog and None.
+num_of_test_img = arg.img_num
+
+test_img_size = 256 * 256
+
+img_size = (256,256)
+###############################################################
+
+
+
+def adjustData(img,mask,flag_multi_class,num_class):
+    if(flag_multi_class):
+        img = img / 255.
+        mask = mask[:,:,:,0] if(len(mask.shape) == 4) else mask[:,:,0]
+        mask[(mask!=0.)&(mask!=255.)&(mask!=128.)] = 0.
+        new_mask = np.zeros(mask.shape + (num_class,))
+        ########################################################################
+        #You should define the value of your labelled gray imgs
+        #For example,the imgs in /data/catndog/train/label/cat is labelled white
+        #you got to define new_mask[mask == 255, 0] = 1
+        #it equals to the one-hot array [1,0,0].
+        ########################################################################
+        new_mask[mask == 255.,   0] = 1
+        new_mask[mask == 128.,   1] = 1
+        new_mask[mask == 0.,   2] = 1
+        mask = new_mask
+
+    elif(np.max(img) > 1):
+        img = img / 255.
+        mask = mask /255.
+        mask[mask > 0.5] = 1
+        mask[mask <= 0.5] = 0
+    return (img,mask)
+
+
+
+def trainGenerator( batch_size, train_path, image_folder, mask_folder, aug_dict, image_color_mode = "grayscale",
+                    mask_color_mode = "grayscale", image_save_prefix  = "image", mask_save_prefix  = "mask",
+                    flag_multi_class = True, num_class = num_classes , save_to_dir = None, target_size = img_size, seed = 1):
+    '''
+    can generate image and mask at the same time
+    use the same seed for image_datagen and mask_datagen to ensure the transformation for image and mask is the same
+    if you want to visualize the results of generator, set save_to_dir = "your path"
+    '''
+    image_datagen = ImageDataGenerator(**aug_dict)
+    mask_datagen = ImageDataGenerator(**aug_dict)
+    image_generator = image_datagen.flow_from_directory(
+        train_path+"image",
+        class_mode = None,
+        color_mode = image_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix  = image_save_prefix,
+        seed = seed)
+    mask_generator = mask_datagen.flow_from_directory(
+        train_path+"label",
+        class_mode = None,
+        color_mode = mask_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix  = mask_save_prefix,
+        seed = seed)
+    print('classes:',image_generator.class_indices, mask_generator.class_indices)
+    train_generator = zip(image_generator, mask_generator)
+    for (img,mask) in train_generator:
+        img,mask = adjustData(img,mask,flag_multi_class,num_class)
+        yield (img,mask)
+
+### You have to prepare validation data by your own while training
+### If you prepared, add validation_data= "your own val path" in fit_generator in main.py
+def validationGenerator( batch_size, val_path, image_folder, mask_folder, aug_dict, image_color_mode = "grayscale",
+                         mask_color_mode = "grayscale", image_save_prefix  = "image", mask_save_prefix  = "mask",
+                         flag_multi_class = True, num_class = num_classes , save_to_dir = None, target_size = img_size, seed = 1):
+
+    image_datagen = ImageDataGenerator()
+    mask_datagen  = ImageDataGenerator()
+    val_image_generator = image_datagen.flow_from_directory(
+        val_path+"image",
+        class_mode = None,
+        color_mode = image_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix  = image_save_prefix,
+        )
+    val_mask_generator = mask_datagen.flow_from_directory(
+        val_path+"label",
+        class_mode = None,
+        color_mode = mask_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix  = mask_save_prefix,
+        )
+    val_generator = zip(val_image_generator, val_mask_generator)
+    for (img,mask) in val_generator:
+        img ,mask = adjustData(img, mask, flag_multi_class, num_class)
+        yield (img,mask)
+
+def testGenerator(test_path,num_image = num_of_test_img, target_size = img_size, flag_multi_class=True, as_gray=True):
+    for i in range(num_image):
+        i = i + 1
+        img = io.imread(os.path.join(test_path,"%d.png"%i),as_gray = as_gray)
+        #img = img / 255.
+        img = trans.resize(img,target_size)
+        img = np.reshape(img,img.shape+(1,)) if (flag_multi_class) else img
+        img = np.reshape(img,(1,)+img.shape)
+        yield img
+
+
+### You have to prepare test data by your own after training
+def testGenerator_for_evaluation(test_path, mask_path, num_image=num_of_test_img, num_class=num_classes ,target_size=(256,256), flag_multi_class = True, as_gray = True):
+    for i in range(num_image):
+        i = i + 1
+        # read test images
+        img = io.imread(os.path.join(test_path,"%d.png"%i), as_gray = as_gray)
+        img = trans.resize(img, target_size)
+        img = np.reshape(img,img.shape+(1,)) if (flag_multi_class) else img
+        img = np.reshape(img,(1,)+img.shape)
+        # read mask images
+        mask = io.imread(os.path.join(mask_path,"%d.png"%i), as_gray = as_gray)
+        mask = trans.resize(mask, target_size)
+        mask = np.expand_dims(mask,0)
+        mask = np.expand_dims(mask,-1)
+        mask = mask[:,:,:,0] if(len(mask.shape) == 4) else mask[:,:,0]
+        ###### filter noise points not related to the classes ######
+        mask[(mask!=0.)&(mask!=255.)&(mask!=128.)] = 0.
+        new_mask = np.zeros(mask.shape + (num_class,))
+        new_mask[(mask == 255.),   0] = 1
+        new_mask[(mask == 128.),   1] = 1
+        new_mask[(mask ==   0.),   2] = 1
+        mask = new_mask
+        yield (img,mask)
+
+
+
+### draw imgs in labelVisualize and save results in saveResult
+def labelVisualize(num_class,  color_dict, img):
+    img_out = np.zeros(img[:,:,0].shape + (3,))
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            index_of_class = np.argmax(img[i,j])
+            img_out[i,j] = color_dict[index_of_class]
+    return img_out
+
+def saveResult(save_path,npyfile,flag_multi_class = True,num_class = num_classes ):
+    count = 1
+    for i,item in enumerate(npyfile):
+        if flag_multi_class:
+            img = labelVisualize(num_class,COLOR_DICT,item)
+            img = img.astype(np.uint8)
+            io.imsave(os.path.join(save_path,"%d.png"%count),img)
+        else:
+            img=item[:,:,0]
+            print(np.max(img),np.min(img))
+            img[img>0.5]=1
+            img[img<=0.5]=0
+            print(np.max(img),np.min(img))
+            img = img * 255.
+            io.imsave(os.path.join(save_path,"%d.png"%count),img)
+        count += 1
+
+
+import numpy as np 
+import os
+import skimage.io as io
+import skimage.transform as trans
+import numpy as np
+from keras.models import *
+from keras.layers import *
+from keras.optimizers import *
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from keras import backend as keras
+from mode.config import *
+from tensorflow.contrib.opt import AdamWOptimizer
+from tensorflow.python.keras.optimizers import TFOptimizer
+from tensorflow.keras import backend as K
+
+arg = command_arguments()
+learning_rate = arg.learning_rate
+learning_decay_rate = arg.learning_decay_rate
+
+img_size = (256,256,1) # 256 * 256 grayscale img with 1 channel
+dr_rate = 0.6 # never mind
+leakyrelu_alpha = 0.3
+
+def unet(pretrained_weights = None,input_size = img_size):
+    inputs = Input(input_size)
+    conv1 = Conv2D(64, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(inputs)
+    conv1 = BatchNormalization()(conv1)
+    conv1 = LeakyReLU(alpha=leakyrelu_alpha)(conv1)
+    #conv1 = Dropout(dr_rate)(conv1) ###
+    conv1 = Conv2D(64, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv1)
+    conv1 = BatchNormalization()(conv1)    
+    conv1 = LeakyReLU(alpha=leakyrelu_alpha)(conv1)
+    #conv1 = Dropout(dr_rate)(conv1) ###
+    pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
+    #pool1 = Dropout(dr_rate)(pool1) ### 
+    
+    conv2 = Conv2D(128, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(pool1)
+    conv2 = BatchNormalization()(conv2)
+    conv2 = LeakyReLU(alpha=leakyrelu_alpha)(conv2)
+    #conv2 = Dropout(dr_rate)(conv2)###
+    conv2 = Conv2D(128, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv2)
+    conv2 = BatchNormalization()(conv2)
+    conv2 = LeakyReLU(alpha=leakyrelu_alpha)(conv2)    
+    #conv2 = Dropout(dr_rate)(conv2)###    
+    pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
+    
+    conv3 = Conv2D(256, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(pool2)
+    conv3 = BatchNormalization()(conv3)
+    conv3 = LeakyReLU(alpha=leakyrelu_alpha)(conv3)
+    #conv3 = Dropout(dr_rate)(conv3) ###
+    conv3 = Conv2D(256, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv3)
+    conv3 = BatchNormalization()(conv3)
+    conv3 = LeakyReLU(alpha=leakyrelu_alpha)(conv3)
+    #conv3 = Dropout(dr_rate)(conv3) ###
+    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+    
+    conv4 = Conv2D(512, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(pool3)
+    conv4 = BatchNormalization()(conv4)
+    conv4 = LeakyReLU(alpha=leakyrelu_alpha)(conv4)    
+    #conv4 = Dropout(dr_rate)(conv4) ###
+    conv4 = Conv2D(512, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv4)
+    conv4 = BatchNormalization()(conv4)
+    conv4 = LeakyReLU(alpha=leakyrelu_alpha)(conv4)
+    drop4 = Dropout(dr_rate)(conv4) ###
+    pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)    
+
+    conv5 = Conv2D(1024, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(pool4)
+    conv5 = BatchNormalization()(conv5)    
+    conv5 = LeakyReLU(alpha=leakyrelu_alpha)(conv5)
+    #conv5 = Dropout(dr_rate)(conv5) ###
+    conv5 = Conv2D(1024, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv5)
+    conv5 = BatchNormalization()(conv5)
+    drop5 = LeakyReLU(alpha=leakyrelu_alpha)(conv5)
+    #drop5 = Dropout(dr_rate)(conv5) ###
+
+    up6 = Conv2D(512, 2, activation = None, padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
+    up6 = LeakyReLU(alpha=leakyrelu_alpha)(up6)
+    merge6 = concatenate([drop4,up6], axis = 3)
+    conv6 = Conv2D(512, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(merge6)
+    conv6 = BatchNormalization()(conv6)
+    conv6 = LeakyReLU(alpha=leakyrelu_alpha)(conv6)
+    #conv6 = Dropout(dr_rate)(conv6) ###
+    conv6 = Conv2D(512, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv6)
+    conv6 = BatchNormalization()(conv6)
+    conv6 = LeakyReLU(alpha=leakyrelu_alpha)(conv6)    
+    #conv6 = Dropout(dr_rate)(conv6) ###   
+
+    up7 = Conv2D(256, 2, activation = None, padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+    up7 = BatchNormalization()(up7)    
+    up7 = LeakyReLU(alpha=leakyrelu_alpha)(up7)
+    up7 = Dropout(dr_rate)(up7) ###
+    merge7 = concatenate([conv3,up7], axis = 3)
+    conv7 = Conv2D(256, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(merge7)
+    conv7 = BatchNormalization()(conv7)    
+    conv7 = LeakyReLU(alpha=leakyrelu_alpha)(conv7)    
+    #conv7 = Dropout(dr_rate)(conv7) ###
+    conv7 = Conv2D(256, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv7)
+    conv7 = BatchNormalization()(conv7)
+    conv7 = LeakyReLU(alpha=leakyrelu_alpha)(conv7)
+    #conv7 = Dropout(dr_rate)(conv7) ###   
+
+    up8 = Conv2D(128, 2, activation = None, padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+    up8 = BatchNormalization()(up8)
+    up8 = LeakyReLU(alpha=0.3)(up8)
+    merge8 = concatenate([conv2,up8], axis = 3)
+    conv8 = Conv2D(128, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(merge8)
+    conv8 = BatchNormalization()(conv8)
+    conv8 = LeakyReLU(alpha=0.3)(conv8)
+    #conv8 = Dropout(dr_rate)(conv8) ###
+    conv8 = Conv2D(128, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv8)
+    conv8 = BatchNormalization()(conv8)    
+    conv8 = LeakyReLU(alpha=0.3)(conv8)    
+    #conv8 = Dropout(dr_rate)(conv8) ###    
+
+    up9 = Conv2D(64, 2, activation = None, padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv8))
+    up9 = BatchNormalization()(up9)
+    up9 = LeakyReLU(alpha=leakyrelu_alpha)(up9)
+    up9 = Dropout(dr_rate)(up9) ###
+    merge9 = concatenate([conv1,up9], axis = 3)
+    conv9 = Conv2D(64, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(merge9)
+    conv9 = BatchNormalization()(conv9)
+    conv9 = LeakyReLU(alpha=leakyrelu_alpha)(conv9)    
+    #conv9 = Dropout(dr_rate)(conv9) ###
+    conv9 = Conv2D(64, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv9)
+    conv9 = BatchNormalization()(conv9)    
+    conv9 = LeakyReLU(alpha=leakyrelu_alpha)(conv9)    
+    #conv9 = Dropout(dr_rate)(conv9) ###
+    conv9 = Conv2D(2, 3, activation = None, padding = 'same', kernel_initializer = 'he_normal')(conv9)
+    conv9 = BatchNormalization()(conv9)
+    conv9 = LeakyReLU(alpha=leakyrelu_alpha)(conv9)    
+    #conv9 = Dropout(dr_rate)(conv9) ###
+
+    conv10 = Conv2D(3, 1, activation = 'softmax')(conv9)
+    model = Model(inputs = inputs, outputs = conv10)   
+    model.compile(optimizer = Adam(lr = learning_rate, decay = learning_decay_rate), loss = 'categorical_crossentropy', metrics = ['accuracy'])
+    
+    #model.summary()
+
+    if(pretrained_weights):
+    	model.load_weights(pretrained_weights)
+
+    return model
+
+import os
+import os.path
+from model import *
+from data import *
+from keras.models import load_model
+from keras.callbacks import History
+import tensorflow as tf
+import matplotlib.pyplot as plt 
+from keras import backend as K
+from mode.config import *
+from csvrecord import * 
+from pathlib import Path
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau
+
+arg = command_arguments()
+
+batch_size = arg.batchsize
+train_path = arg.train_path
+train_img_folder = arg.train_img_folder
+train_label_folder = arg.train_label_folder
+test_img_path = arg.test_img_path
+steps_per_epoch = arg.steps_per_epoch
+epochs = arg.epochs
+save_result_folder = arg.save_result_folder
+csvfilename = arg.csvfilename
+model_name = arg.model_name
+plt_save_name = arg.plt_save_name
+val_plt_name = arg.val_plt_name
+img_num = arg.img_num
+filenum = arg.filenum
+
+#augs 
+
+rotation_range = arg.rotation_range
+width_shift_range = arg.width_shift_range
+height_shift_range = arg.height_shift_range
+zoom_range = arg.zoom_range
+horizontal_flip = arg.horizontal_flip
+fill_mode = arg.fill_mode
+
+
+data_gen_args = dict(
+                    featurewise_center=True,
+                    featurewise_std_normalization=True,
+                    rotation_range=rotation_range,
+                    width_shift_range=width_shift_range,
+                    height_shift_range=height_shift_range,
+                    #shear_range=0.05,
+                    #zoom_range=zoom_range,
+                    horizontal_flip=horizontal_flip,
+                    fill_mode=fill_mode,
+                    cval=0)
+
+
+#draw the training process of every epoch
+def show_train_history(train_history, train, loss, plt_save_name=plt_save_name):
+    plt.plot(train_history.history['acc'])
+    plt.plot(train_history.history['loss'])
+    plt.title('Train hist')
+    plt.ylabel(train)
+    plt.xlabel('Epoch')
+    plt.legend(['acc','loss'], loc='upper left')
+    plt.savefig(plt_save_name)
+
+
+##### training
+myGene = trainGenerator(batch_size, train_path, train_img_folder, train_label_folder, data_gen_args, save_to_dir = None)
+
+model = unet()
+model_checkpoint = ModelCheckpoint(model_name, monitor='loss',verbose=1, save_best_only=True)
+training = model.fit_generator(myGene, steps_per_epoch=steps_per_epoch, epochs=epochs, validation_steps=10, callbacks=[model_checkpoint])
+show_train_history(training, 'acc', 'loss')
+#####
+
+
+##### inference
+model = load_model(model_name)
+testGene = testGenerator(test_img_path)
+#testGene_for_eval = testGenerator_for_evaluation(test_img_path)
+results = model.predict_generator(testGene, img_num, verbose=1)
+#loss, acc = model.evaluate_generator(testGene_for_eval, steps=img_num, verbose=1)
+#print("test loss:",loss,"  test accuracy:", acc)
+#####
+
+
+##### draw your inference results
+if not os.path.exists(save_result_folder):
+    os.makedirs(save_result_folder)
+
+saveResult( save_result_folder, results)
+#####
+
+
+##### Record every command params of your training
+if (os.path.isfile(csvfilename)!=True):
+    csv_create(csvfilename, filenum, batch_size, steps_per_epoch, epochs, learning_rate, learning_decay_rate, rotation_range)
+else:
+    csv_append(csvfilename, filenum, batch_size, steps_per_epoch, epochs, learning_rate, learning_decay_rate, rotation_range)
+#####
+
+
+K.clear_session()
