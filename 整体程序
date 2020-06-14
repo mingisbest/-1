@@ -28,9 +28,39 @@ import skimage.io as io
 
 import skimage.transform as trans
 
+Sky = [128,128,128]
+
+Building = [128,0,0]
+
+Pole = [192,192,128]
+
+Road = [128,64,128]
+
+Pavement = [60,40,222]
+
+Tree = [128,128,0]
+
+SignSymbol = [192,128,128]
+
+Fence = [64,64,128]
+
+Car = [64,0,128]
+
+Pedestrian = [64,64,0]
+
+Bicyclist = [0,128,192]
+
+Unlabelled = [0,0,0]
+
+ 
+
+COLOR_DICT = np.array([Sky, Building, Pole, Road, Pavement,
+
+                          Tree, SignSymbol, Fence, Car, Pedestrian, Bicyclist, Unlabelled])
+
 def trainGenerator(batch_size,aug_dict,train_path,image_folder,label_folder,image_color_mode='rgb',
                    label_color_mode='rgb',image_save_prefix='image',label_save_prefix='label',
-                   flag_multi_class=True,num_class=13,save_to_dir=None,target_size=(512,512),seed=1):
+                   flag_multi_class=True,num_class=13,save_to_dir=None,target_size=(128,128),seed=1):
     image_datagen = ImageDataGenerator(**aug_dict)
     label_datagen = ImageDataGenerator(**aug_dict)
     image_generator = image_datagen.flow_from_directory(
@@ -63,7 +93,7 @@ def trainGenerator(batch_size,aug_dict,train_path,image_folder,label_folder,imag
 print(2)
 def valGenerator(batch_size,aug_dict,val_path,image_folder,label_folder,image_color_mode='rgb',
                    label_color_mode='rgb',image_save_prefix='image',label_save_prefix='label',
-                   flag_multi_class=True,num_class=13,save_to_dir=None,target_size=(512,512),seed=1):
+                   flag_multi_class=True,num_class=13,save_to_dir=None,target_size=(128,128),seed=1):
     print(4)
     image_datagen = ImageDataGenerator(**aug_dict)
     label_datagen = ImageDataGenerator(**aug_dict)
@@ -115,7 +145,7 @@ def adjustData(img,label,flag_multi_class,num_class):
 
 
 print(8)
-def testGenerator(test_path,target_size=(512,512),flag_multi_class=True,as_gray=False):
+def testGenerator(test_path,target_size=(128,128),flag_multi_class=True,as_gray=False):
     filenames = os.listdir(test_path)
     for filename in filenames:
         img = io.imread(os.path.join(test_path,filename),as_gray=as_gray)
@@ -148,7 +178,7 @@ def saveResult(save_path,npyfile,flag_multi_class=True):
 print(12)            
 
 
-IMAGE_SIZE = 512
+IMAGE_SIZE = 128
 print(14)
 def unet(pretrained_weights = None, input_size = (IMAGE_SIZE,IMAGE_SIZE,3),num_class=2):
     inputs = Input(input_size)
@@ -265,13 +295,13 @@ aug_args = dict( #设置ImageDataGenerator参数
     fill_mode = 'nearest'
 )
 print(22)
-train_gene = trainGenerator(batch_size=2,aug_dict=aug_args,train_path='C:\\CamVid\\',
+train_gene = trainGenerator(batch_size=1,aug_dict=aug_args,train_path='C:\\CamVid\\',
                         image_folder='train',label_folder='trainannot',
                         image_color_mode='rgb',label_color_mode='rgb',
                         image_save_prefix='image',label_save_prefix='label',
                         flag_multi_class=True,save_to_dir=None
                         )
-val_gene = valGenerator(batch_size=2,aug_dict=aug_args,val_path='C:\\CamVid\\validation\\',
+val_gene = valGenerator(batch_size=1,aug_dict=aug_args,val_path='C:\\CamVid\\validation\\',
                        image_folder='val',label_folder='valannot',
                        image_color_mode='rgb',label_color_mode='rgb',
                        image_save_prefix='image',label_save_prefix='label',
@@ -283,8 +313,8 @@ model = unet(num_class=13)
 model_checkpoint = ModelCheckpoint('camvid.hdf5',monitor='val_loss',verbose=1,save_best_only=True)
 print(24)
 history = model.fit_generator(train_gene,
-                              steps_per_epoch=100,
-                              epochs=20,
+                              steps_per_epoch=50,
+                              epochs=2,
                               verbose=1,
                               callbacks=[model_checkpoint],
                               validation_data=val_gene,
@@ -292,6 +322,6 @@ history = model.fit_generator(train_gene,
                               )
 # model.load_weights('camvid.hdf5')
 test_gene = testGenerator(test_path='C:\\CamVid\\test')
-results = model.predict_generator(test_gene,233,verbose=1)
+results = model.predict_generator(test_gene,20,verbose=1)
 saveResult('C:\\CamVid\\testpred\\',results)
 
