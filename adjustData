@@ -1,0 +1,17 @@
+def adjustData(img,label,flag_multi_class,num_class):
+    if (flag_multi_class):
+        img = img/255.
+        label = label[:,:,:,0] if (len(label.shape)==4) else label[:,:,0]
+        # print('-----1-----', img.shape, label.shape)
+        new_label = np.zeros(label.shape+(num_class,))
+        # print('new_label.shape',new_label.shape)
+        for i in range(num_class):
+            new_label[label==i,i] = 1
+        label = new_label
+    elif (np.max(img)>1):
+        img = img/255.
+        label = label/255.
+        label[label>0.5] = 1
+        label[label<=0.5] = 0
+    return (img,label)
+
