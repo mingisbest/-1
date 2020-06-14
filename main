@@ -1,0 +1,53 @@
+# -*- coding:utf-8 -*-
+# Author : Ray
+# Data : 2019/7/25 2:15 PM
+
+
+from datapre2 import *
+from model import *
+import warnings
+
+warnings.filterwarnings('ignore')	#忽略警告信息
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'	#设置GPU
+#测试集233张，训练集367张，校准集101张，总共233+367+101=701张，图像大小为360*480，语义类别为13类
+
+aug_args = dict( #设置ImageDataGenerator参数
+    rotation_range = 0.2,
+    width_shift_range = 0.05,
+    height_shift_range = 0.05,
+    shear_range = 0.05,
+    zoom_range = 0.05,
+    horizontal_flip = True,
+    vertical_flip = True,
+    fill_mode = 'nearest'
+)
+
+train_gene = trainGenerator(batch_size=2,aug_dict=aug_args,train_path='CamVid/',
+                        image_folder='train',label_folder='trainannot',
+                        image_color_mode='rgb',label_color_mode='rgb',
+                        image_save_prefix='image',label_save_prefix='label',
+                        flag_multi_class=True,save_to_dir=None
+                        )
+val_gene = valGenerator(batch_size=2,aug_dict=aug_args,val_path='CamVid/',
+                       image_folder='val',label_folder='valannot',
+                       image_color_mode='rgb',label_color_mode='rgb',
+                       image_save_prefix='image',label_save_prefix='label',
+                       flag_multi_class=True,save_to_dir=None
+                       )
+tensorboard = TensorBoard(log_dir='./log')
+model = unet(num_class=13)
+model_checkpoint = ModelCheckpoint('camvid.hdf5',monitor='val_loss',verbose=1,save_best_only=True)
+
+history = model.fit_generator(train_gene,
+                              steps_per_epoch=100,
+                              epochs=20,
+                              verbose=1,
+                              callbacks=[model_checkpoint,tensorboard],
+                              validation_data=val_gene,
+                              validation_steps=50   #validation/batchsize
+                              )
+# model.load_weights('camvid.hdf5')
+test_gene = testGenerator(test_path='CamVid/test')
+results = model.predict_generator(test_gene,233,verbose=1)
+saveResult('CamVid/testpred/',results)
+
