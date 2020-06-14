@@ -1,0 +1,32 @@
+def valGenerator( batch_size,aug_dict,train_path,image_folder,label_folder,image_color_mode='rgb',
+                   label_color_mode='rgb',image_save_prefix='image',label_save_prefix='label',
+                   flag_multi_class=True,num_class=13,save_to_dir=None,target_size=(512,512),seed=1):
+
+    image_datagen = ImageDataGenerator(**aug_dict)
+    label_datagen = ImageDataGenerator(**aug_dict)
+    val_image_generator = image_datagen.flow_from_directory(
+        val_path,
+        classes=[image_folder],
+        class_mode = None,
+        color_mode = image_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix  = image_save_prefix,
+        seed = seed
+        )
+    val_label_generator = label_datagen.flow_from_directory(
+        val_path,
+        classes = [label_folder],
+        class_mode = None,
+        color_mode = label_color_mode,
+        target_size = target_size,
+        batch_size = batch_size,
+        save_to_dir = save_to_dir,
+        save_prefix  = label_save_prefix,
+        seed = seed
+        )
+    val_generator = zip(val_image_generator, val_label_generator)
+    for (img,label) in val_generator:
+        img ,label = adjustData(img, label, flag_multi_class, num_class)
+        yield (img,label)
