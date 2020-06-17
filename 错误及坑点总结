@@ -1,2 +1,3 @@
 1.要自定义color dict
-2.
+2.图片格式，位深要对应，train中image为24位png，而label为8位png
+当图片尺寸大时，无法计算，也出现错误
