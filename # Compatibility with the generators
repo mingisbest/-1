@@ -1,0 +1,3 @@
+ # Compatibility with the generators
+ 测试集数量设置不对
+ results = model.predict_generator(test_gene,4,verbose=1)
