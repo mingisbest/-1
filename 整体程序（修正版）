@@ -68,7 +68,7 @@ background = [0,0,0]
 
 
 
-COLOR_DICT = np.array([ circle, cell, background])
+COLOR_DICT = np.array([ circle, cell, background])   #调整显色模式
 
 class_name = [ 'circle', 'cell', 'background']  # You must define by yourself
 
