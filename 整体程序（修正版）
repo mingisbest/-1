@@ -203,7 +203,7 @@ def adjustData(img,label,flag_multi_class,num_class):
 
         new_label[label == 32,   1] = 1
 
-        new_label[label == 0.,   2] = 1
+        new_label[label == 0,   2] = 1
 
         label = new_label
 
