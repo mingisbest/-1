@@ -180,6 +180,7 @@ def adjustData(img,label,flag_multi_class,num_class):
     if(flag_multi_class):
 
         img = img / 255.0
+        
 
         label = label[:,:,:,0] if(len(label.shape) == 4) else label[:,:,0]
 
@@ -196,6 +197,23 @@ def adjustData(img,label,flag_multi_class,num_class):
         #you got to define new_mask[mask == 255, 0] = 1
 
         #it equals to the one-hot array [1,0,0].
+        
+      #如果要用一下程序，就要添加 label= label/32.0  
+    if(flag_multi_class):
+
+        img = img / 255.0
+        label = label/32.0
+
+        label = label[:,:,:,0] if(len(label.shape) == 4) else label[:,:,0]
+
+        #label[(label!=0.)&(label!=255.0)&(label!=128.)] = 0.
+
+        new_label = np.zeros(label.shape + (num_class,))
+        for i in range(num_class):
+
+            new_label[label==i,i] = 1
+
+        label = new_label
 
         ########################################################################
 
