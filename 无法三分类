@@ -1,0 +1,8 @@
+ new_label[label == 64,   0] = 1
+
+        new_label[label == 32,   1] = 1
+
+        new_label[label == 0,   2] = 1
+
+        label = new_label
+因为0后面多余了符合如，。可能导致无法三分类
