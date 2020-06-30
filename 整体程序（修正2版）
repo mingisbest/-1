@@ -406,7 +406,6 @@ def adjustData(img,label,flag_multi_class,num_class):
 
         img = img / 255.0
 
-        label = label/32.0
 
 
 
