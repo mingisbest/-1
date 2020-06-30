@@ -142,41 +142,12 @@ COLOR_DICT = np.array([ circle, cell, background])   #调整显色模式
 
 
 
-class_name = [ 'circle', 'cell', 'background']  # You must define by yourself
 
 
 
 
 
 
-
-color = 'grayscale'
-
-
-
-
-
-
-
-num_classes = 3 # include cat, dog and None.
-
-
-
-
-
-
-
-
-
-test_img_size = 256 * 256
-
-
-
-
-
-
-
-img_size = (256,256)
 
 
 
@@ -361,51 +332,7 @@ def adjustData(img,label,flag_multi_class,num_class):
 
 
         img = img / 255.0
-
-        
-
-
-
-        label = label[:,:,:,0] if(len(label.shape) == 4) else label[:,:,0]
-
-
-
-        #label[(label!=0.)&(label!=255.0)&(label!=128.)] = 0.
-
-
-
-        new_label = np.zeros(label.shape + (num_class,))
-
-
-
-        ########################################################################
-
-
-
-        #You should define the value of your labelled gray imgs
-
-
-
-        #For example,the imgs in /data/catndog/train/label/cat is labelled white
-
-
-
-        #you got to define new_mask[mask == 255, 0] = 1
-
-
-
-        #it equals to the one-hot array [1,0,0].
-
-        
-
-      #如果要用一下程序，就要添加 label= label/32.0  
-
-    if(flag_multi_class):
-
-
-
-        img = img / 255.0
-
+       
 
 
 
@@ -418,7 +345,7 @@ def adjustData(img,label,flag_multi_class,num_class):
 
 
         new_label = np.zeros(label.shape + (num_class,))
-         new_label[label == 75,   0] = 1
+        new_label[label == 75,   0] = 1
 
 
 
@@ -431,6 +358,30 @@ def adjustData(img,label,flag_multi_class,num_class):
 
 
         label = new_label
+
+
+    elif (np.max(img)>1):
+
+
+
+        img = img/255.
+
+
+
+        label = label/255.
+
+
+
+        label[label>0.5] = 1
+
+
+
+        label[label<=0.5] = 0
+
+
+
+    return (img,label)
+        
 
        
 
@@ -778,9 +729,9 @@ print(24)
 
 history = model.fit_generator(train_gene,
 
-                              steps_per_epoch=50,
+                              steps_per_epoch=100,
 
-                              epochs=5,
+                              epochs=10,
 
                               verbose=1,
 
@@ -788,7 +739,7 @@ history = model.fit_generator(train_gene,
 
                               validation_data=val_gene,
 
-                              validation_steps=50   #validation/batchsize
+                              validation_steps=100   #validation/batchsize
 
                               )
 
@@ -796,6 +747,6 @@ history = model.fit_generator(train_gene,
 
 test_gene = testGenerator(test_path='C:\\cell3\\test3')
 
-results = model.predict_generator(test_gene,20,verbose=1)
+results = model.predict_generator(test_gene,10,verbose=1)
 
 saveResult('C:\\cell3\\testpred3\\',results)
