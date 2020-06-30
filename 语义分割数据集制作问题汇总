@@ -1,0 +1,118 @@
+操作指南
+
+
+安装labelme
+
+然后启动命令窗口
+切换至目标位置cd/d  f:/../
+
+单独文件转换可以这么做
+https://www.pianshen.com/article/7470337068/
+
+
+批量转换下边的做法
+C:\ProgramData\Anaconda3\Lib\site-packages\labelme\cli
+https://blog.csdn.net/gaoyi135/article/details/103870646
+
+
+https://blog.csdn.net/gaoyi135/article/details/103870646
+
+
+
+Labelme2voc注意事项，下边的评论回答
+
+https://blog.csdn.net/aaon22357/article/details/86407625
+
+
+
+
+解决错误
+https://blog.csdn.net/zheshigeren/article/details/104471684/
+批量转换json文件，出现AttributeError: module 'labelme.utils' has no attribute 'draw_label'错误
+
+
+总结一下
+参照https://blog.csdn.net/yql_617540298/article/details/81110685
+进行批量转换
+在anaconda环境下 打开cmd
+安装好labelme之后
+
+打开cmd，激活labelme环境（activate labelme）
+标准成功之后
+将json文件与png文件分开，单独成文件夹
+B站教学
+https://www.bilibili.com/video/BV16b411G7kB?p=2
+https://blog.csdn.net/yql_617540298/article/details/81110685
+按照上述博客，将安装目录下的labelme_jason_to_dataset.exe里边的程序改写。
+之后cd改变路径，进行操作，就可以批量生成。
+一、跳转到当前驱动器的根目录：
+cd c:\
+cd\
+二、跳转到当前驱动器下一层文件：
+cd coming
+三、跳转到当前驱动器的其他文件：
+cd c:\WINDOWS
+四、跳转到其他驱动器：
+D:
+五、跳转到其他驱动器的其他文件：
+cd/d F:\coming
+六、跳转到上一层目录：
+cd..
+七、查找当前目录下的所有子文件：
+dir
+八、查找hello.py里的内容：
+more hello.py
+
+C:\ProgramData\Anaconda3\Scripts
+报错，主要是labelme下边的文件不对，将labelme下边C:\ProgramData\Anaconda3\Lib\site-packages\labelme\utils缺少draw.py文件，以及别的文件程序有确实，在网上找到
+https://github.com/wkentaro/labelme/blob/v3.11.2/labelme/utils/shape.py对各个文件进行替换，就没有问题了。
+
+然后：
+三、执行与查看
+在cmd中cd到label_json_to_dataset.py路径下，然后输入
+
+
+文件生成在
+C:\ProgramData\Anaconda3\Scripts
+
+
+
+
+https://blog.csdn.net/LawenceRay/article/details/97391350
+这里就是unet模型部分，因为keras构建模型更加简便、直观。最后这里实现的unet模型能够处理二分问题也能处理多类分割问题。另外对模型进行了细微的调整，在卷积过程中设置activation=None
+
+
+
+Keras】基于SegNet和U-Net的遥感图像语义分割
+https://www.sohu.com/a/218292615_642762
+
+
+
+ValueError: Negative dimension size caused by subtracting 2 from 1 for 'max_pooling2d_25/MaxPool' (op: 'MaxPool') with input shapes: [?,1,256,64].
+这种问题是由于input_size中 的格式需要条换一下input_size = (256,256,1)
+
+
+
+
+https://blog.csdn.net/shonmark/article/details/90142633?utm_medium=distribute.pc_relevant_t0.none-task-blog-BlogCommendFromMachineLearnPai2-1.nonecase&depth_1-utm_source=distribute.pc_relevant_t0.none-task-blog-BlogCommendFromMachineLearnPai2-1.nonecase
+ValueError: Error when checking input: expected conv2d_1_input to have 4 dimensions, but got array with shape (X, X, X)
+
+解决方法：原因是输入的第一个dimension是bachsize，所以需要将数据reshape为(1，X, X, X)。
+————————————————
+版权声明：本文为CSDN博主「shonmark」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/shonmark/article/details/90142633
+
+
+
+https://blog.csdn.net/moshiyaofei/article/details/87888451
+keras中的Reshape
+keras自带：
+
+from keras.layers import Reshape
+
+layer_1 = Reshape((height, width, chns))( layer1)
+tensorflow中的reshape函数：
+
+from keras import backend as K
+
+K.reshape( layer1,(-1,2,4,8) ) 
